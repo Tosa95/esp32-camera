@@ -255,18 +255,34 @@ static esp_err_t camera_fb_init(size_t count)
         }
         memset(_fb2, 0, sizeof(camera_fb_int_t));
         _fb2->size = s_state->fb_size;
-        _fb2->buf = (uint8_t*) calloc(_fb2->size, 1);
-        if(!_fb2->buf) {
-            ESP_LOGI(TAG, "Allocating %d KB frame buffer in PSRAM", s_state->fb_size/1024);
+
+        #ifndef PREFER_PSRAM
+            _fb2->buf = (uint8_t*) calloc(_fb2->size, 1);
+            if(!_fb2->buf) {
+                ESP_LOGI(TAG, "Allocating %d KB frame buffer in PSRAM", s_state->fb_size/1024);
+                _fb2->buf = (uint8_t*) heap_caps_calloc(_fb2->size, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+            } else {
+                ESP_LOGI(TAG, "Allocating %d KB frame buffer in OnBoard RAM", s_state->fb_size/1024);
+            }
+            if(!_fb2->buf) {
+                free(_fb2);
+                ESP_LOGE(TAG, "Allocating %d KB frame buffer Failed", s_state->fb_size/1024);
+                goto fail;
+            }
+        #else
             _fb2->buf = (uint8_t*) heap_caps_calloc(_fb2->size, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-        } else {
-            ESP_LOGI(TAG, "Allocating %d KB frame buffer in OnBoard RAM", s_state->fb_size/1024);
-        }
-        if(!_fb2->buf) {
-            free(_fb2);
-            ESP_LOGE(TAG, "Allocating %d KB frame buffer Failed", s_state->fb_size/1024);
-            goto fail;
-        }
+            if(!_fb2->buf) {
+                ESP_LOGI(TAG, "Allocating %d KB frame buffer in OnBoard RAM", s_state->fb_size/1024);
+                _fb2->buf = (uint8_t*) calloc(_fb2->size, 1);
+            } else {
+                ESP_LOGI(TAG, "Allocating %d KB frame buffer in PSRAM", s_state->fb_size/1024);
+            }
+            if(!_fb2->buf) {
+                free(_fb2);
+                ESP_LOGE(TAG, "Allocating %d KB frame buffer Failed", s_state->fb_size/1024);
+                goto fail;
+            }
+        #endif
         memset(_fb2->buf, 0, _fb2->size);
         _fb2->next = _fb;
         _fb = _fb2;

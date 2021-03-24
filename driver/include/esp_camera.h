@@ -70,6 +70,8 @@
 #include "sensor.h"
 #include "sys/time.h"
 
+#define PREFER_PSRAM
+
 #ifdef __cplusplus
 extern "C" {
 #endif
